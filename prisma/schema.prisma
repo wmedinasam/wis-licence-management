@@ -54,3 +54,16 @@ model License {
   @@index([isActive])
   @@map("licenses")
 }
+
+model IdempotencyRequest {
+  id           String   @id // El idempotency key del cliente
+  endpoint     String   @db.VarChar(255)
+  method       String   @db.VarChar(10)
+  statusCode   Int
+  responseBody Json
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime  // 24 horas desde createdAt
+
+  @@index([expiresAt])
+  @@map("idempotency_requests")
+}
