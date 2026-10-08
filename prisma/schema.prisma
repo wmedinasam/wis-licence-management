@@ -1,0 +1,56 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        String    @id @default(uuid())
+  name      String    @db.VarChar(255)
+  nit       String?   @unique @db.VarChar(50) // NIT (Identificación fiscal, ej. Guatemala)
+  email     String?   @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  licenses  License[]
+
+  @@index([nit])
+  @@map("clients")
+}
+
+model Application {
+  id       String    @id @default(uuid())
+  code     String    @unique @db.VarChar(100) // Ej: "SAE_FACTURACION_GT", "CONTROL_INVENTARIO"
+  name     String    @db.VarChar(255) // Nombre legible de la app
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  licenses License[]
+
+  @@index([code])
+  @@map("applications")
+}
+
+model License {
+  id            String      @id @default(uuid())
+  clientId      String
+  client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  expiresAt     DateTime    // Fecha de expiración de la licencia
+  isActive      Boolean     @default(true)
+  hardwareId    String?     @db.VarChar(255) // Opcional: Bloquear licencia a un PC/Servidor específico
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([clientId, applicationId, hardwareId])
+  @@index([clientId])
+  @@index([applicationId])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@map("licenses")
+}
