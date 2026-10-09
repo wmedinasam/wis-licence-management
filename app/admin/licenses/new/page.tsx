@@ -11,14 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 
-const licenseSchema = z.object({
+const formSchema = z.object({
   clientId: z.string().uuid('Cliente requerido'),
   applicationId: z.string().uuid('Aplicación requerida'),
-  expiresAt: z.string().datetime(),
+  dateOnly: z.string().min(1, 'Fecha requerida'),
   hardwareId: z.string().optional(),
 });
 
-type LicenseFormData = z.infer<typeof licenseSchema>;
+type FormData = z.infer<typeof formSchema>;
 
 export default function NewLicensePage() {
   const router = useRouter();
@@ -27,15 +27,17 @@ export default function NewLicensePage() {
   const [apps, setApps] = useState<any[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LicenseFormData>({
-    resolver: zodResolver(licenseSchema),
+  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+    resolver: zodResolver(formSchema),
   });
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const clientsRes = await fetch('/api/admin/clients');
-        const appsRes = await fetch('/api/admin/applications');
+        const [clientsRes, appsRes] = await Promise.all([
+          fetch('/api/admin/clients'),
+          fetch('/api/admin/applications'),
+        ]);
         const clientsData = await clientsRes.json();
         const appsData = await appsRes.json();
         setClients(clientsData);
@@ -49,16 +51,29 @@ export default function NewLicensePage() {
     fetchData();
   }, []);
 
-  const onSubmit = async (data: LicenseFormData) => {
+  const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
+      // Convertir fecha simple (YYYY-MM-DD) a ISO datetime al final del día (23:59:59)
+      const expiresAt = new Date(`${data.dateOnly}T23:59:59.000Z`).toISOString();
+
+      const idempotencyKey = typeof window !== 'undefined' && window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : Math.random().toString();
+
       const res = await fetch('/api/admin/licenses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Idempotency-Key': Math.random().toString(),
+          'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify({ ...data, isActive: true }),
+        body: JSON.stringify({
+          clientId: data.clientId,
+          applicationId: data.applicationId,
+          expiresAt,
+          hardwareId: data.hardwareId || null,
+          isActive: true,
+        }),
       });
 
       if (res.ok) {
@@ -66,7 +81,7 @@ export default function NewLicensePage() {
         router.push('/admin/licenses');
       } else {
         const error = await res.json();
-        toast.error(error.error || 'Error al crear');
+        toast.error(error.error || 'Error al crear licencia');
       }
     } catch (error) {
       toast.error('Error al crear licencia');
@@ -81,35 +96,35 @@ export default function NewLicensePage() {
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-white">Nueva Licencia</h1>
 
-      <Card className="max-w-2xl">
+      <Card className="max-w-2xl bg-slate-900 border-slate-800">
         <CardHeader>
-          <CardTitle>Crear Licencia</CardTitle>
+          <CardTitle className="text-white">Crear Licencia</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <Label htmlFor="clientId">Cliente *</Label>
+              <Label htmlFor="clientId" className="text-slate-300">Cliente *</Label>
               <select
                 id="clientId"
                 {...register('clientId')}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1"
               >
                 <option value="">Seleccionar cliente...</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name} ({c.nit || 'Sin NIT'})
+                    {c.name} {c.nit ? `(NIT: ${c.nit})` : ''}
                   </option>
                 ))}
               </select>
-              {errors.clientId && <p className="text-red-500 text-sm mt-1">{errors.clientId.message}</p>}
+              {errors.clientId && <p className="text-red-400 text-sm mt-1">{errors.clientId.message}</p>}
             </div>
 
             <div>
-              <Label htmlFor="applicationId">Aplicación *</Label>
+              <Label htmlFor="applicationId" className="text-slate-300">Aplicación *</Label>
               <select
                 id="applicationId"
                 {...register('applicationId')}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 mt-1"
               >
                 <option value="">Seleccionar aplicación...</option>
                 {apps.map((a) => (
@@ -118,33 +133,35 @@ export default function NewLicensePage() {
                   </option>
                 ))}
               </select>
-              {errors.applicationId && <p className="text-red-500 text-sm mt-1">{errors.applicationId.message}</p>}
+              {errors.applicationId && <p className="text-red-400 text-sm mt-1">{errors.applicationId.message}</p>}
             </div>
 
             <div>
-              <Label htmlFor="expiresAt">Fecha de Expiración *</Label>
+              <Label htmlFor="dateOnly" className="text-slate-300">Fecha de Expiración (Día/Mes/Año) *</Label>
               <Input
-                id="expiresAt"
-                type="datetime-local"
-                {...register('expiresAt')}
+                id="dateOnly"
+                type="date"
+                {...register('dateOnly')}
+                className="bg-slate-800 border-slate-700 text-white mt-1"
               />
-              {errors.expiresAt && <p className="text-red-500 text-sm mt-1">{errors.expiresAt.message}</p>}
+              {errors.dateOnly && <p className="text-red-400 text-sm mt-1">{errors.dateOnly.message}</p>}
             </div>
 
             <div>
-              <Label htmlFor="hardwareId">ID Hardware (Opcional)</Label>
+              <Label htmlFor="hardwareId" className="text-slate-300">ID Hardware (Opcional)</Label>
               <Input
                 id="hardwareId"
                 {...register('hardwareId')}
                 placeholder="PC-001, SERVER-001, etc."
+                className="bg-slate-800 border-slate-700 text-white mt-1"
               />
             </div>
 
             <div className="flex gap-2 pt-4">
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {loading ? 'Creando...' : 'Crear Licencia'}
               </Button>
-              <Button type="button" variant="outline" onClick={() => router.back()}>
+              <Button type="button" variant="outline" onClick={() => router.back()} className="border-slate-700 bg-slate-800 text-white hover:bg-slate-700">
                 Cancelar
               </Button>
             </div>

@@ -2,21 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Plus, Search, Edit } from 'lucide-react';
 import { NoDeleteBadge } from '@/components/admin/badges';
 
-interface Client {
-  id: string;
-  name: string;
-  nit: string | null;
-  email: string | null;
-  licenses: any[];
-}
-
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -28,83 +22,100 @@ export default function ClientsPage() {
     try {
       const res = await fetch('/api/admin/clients');
       const data = await res.json();
-      setClients(data);
+      if (Array.isArray(data)) {
+        setClients(data);
+      } else {
+        setClients([]);
+        toast.error(data.error || 'Error al cargar clientes');
+      }
     } catch (error) {
-      console.error('Error:', error);
+      toast.error('Error al conectar con el servidor');
+      setClients([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filtered = clients.filter(
+  const filteredClients = clients.filter(
     (c) =>
       c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.nit?.includes(search) ?? false)
+      (c.nit && c.nit.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Clientes</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Clientes</h1>
+          <p className="text-slate-400 mt-1">Gestiona las empresas registradas en el sistema</p>
+        </div>
         <Link href="/admin/clients/new">
-          <Button>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Cliente
           </Button>
         </Link>
       </div>
 
-      <Card>
+      <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
-          <input
-            type="text"
-            placeholder="Buscar por nombre o NIT..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-white">Listado de Clientes</CardTitle>
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por nombre o NIT..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-slate-400">Cargando...</div>
-          ) : filtered.length > 0 ? (
+            <div className="text-center py-8 text-slate-400">Cargando clientes...</div>
+          ) : filteredClients.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">No se encontraron clientes.</div>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-slate-700">
-                  <tr className="text-left text-slate-400">
-                    <th className="pb-3 font-medium">Nombre</th>
-                    <th className="pb-3 font-medium">NIT</th>
-                    <th className="pb-3 font-medium">Email</th>
-                    <th className="pb-3 font-medium">Licencias</th>
-                    <th className="pb-3 font-medium">Acciones</th>
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="border-b border-slate-800 text-xs uppercase text-slate-400 bg-slate-950/50">
+                  <tr>
+                    <th className="px-4 py-3">Nombre</th>
+                    <th className="px-4 py-3">NIT</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3 text-center">Licencias</th>
+                    <th className="px-4 py-3 text-center">Seguridad</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="space-y-2">
-                  {filtered.map((client) => (
-                    <tr
-                      key={client.id}
-                      className="border-b border-slate-800 hover:bg-slate-800/50"
-                    >
-                      <td className="py-3 text-white">{client.name}</td>
-                      <td className="py-3 text-slate-300">{client.nit || '-'}</td>
-                      <td className="py-3 text-slate-300">{client.email || '-'}</td>
-                      <td className="py-3 text-slate-300">{client.licenses.length}</td>
-                      <td className="py-3 space-x-2 flex items-center gap-2">
+                <tbody className="divide-y divide-slate-800">
+                  {filteredClients.map((client) => (
+                    <tr key={client.id} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-white">{client.name}</td>
+                      <td className="px-4 py-3">{client.nit || <span className="text-slate-500 italic">Sin NIT</span>}</td>
+                      <td className="px-4 py-3">{client.email || <span className="text-slate-500 italic">Sin email</span>}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800">
+                          {client._count?.licenses || 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <NoDeleteBadge />
+                      </td>
+                      <td className="px-4 py-3 text-right">
                         <Link href={`/admin/clients/${client.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 hover:bg-slate-800">
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
                           </Button>
                         </Link>
-                        <NoDeleteBadge />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
-          ) : (
-            <div className="text-slate-400 py-8 text-center">
-              No hay clientes registrados
             </div>
           )}
         </CardContent>

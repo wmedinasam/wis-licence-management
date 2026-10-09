@@ -1,85 +1,54 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { withIdempotency } from '@/lib/idempotency/middleware';
 import { z } from 'zod';
-import { requireIdempotencyKey, withIdempotency } from '@/lib/idempotency/middleware';
 
-const prisma = new PrismaClient();
-
-const applicationSchema = z.object({
-  code: z.string().min(1).regex(/^[A-Z0-9_]+$/, 'Código debe ser mayúsculas, números y guiones bajos'),
-  name: z.string().min(3),
+const appSchema = z.object({
+  code: z.string().min(2, 'Código requerido').toUpperCase(),
+  name: z.string().min(2, 'Nombre requerido'),
 });
 
 export async function GET() {
   try {
     const applications = await prisma.application.findMany({
       include: {
-        licenses: {
-          include: {
-            client: true,
-          },
+        _count: {
+          select: { licenses: true },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { name: 'asc' },
     });
-
     return NextResponse.json(applications);
   } catch (error) {
-    console.error('Error al obtener aplicaciones:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener aplicaciones' },
-      { status: 500 }
-    );
+    console.error('Error al listar aplicaciones:', error);
+    return NextResponse.json({ error: 'Error al listar aplicaciones' }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
-  const idempotencyKey = requireIdempotencyKey(request);
-  
-  if (!idempotencyKey) {
-    return NextResponse.json(
-      { error: 'Header Idempotency-Key es requerido' },
-      { status: 400 }
-    );
-  }
-
-  return withIdempotency(
-    idempotencyKey,
-    '/api/admin/applications',
-    'POST',
-    async () => {
-      try {
-        const body = await request.json();
-        const validatedData = applicationSchema.parse(body);
-
-        const application = await prisma.application.create({
-          data: validatedData,
-        });
-
-        return NextResponse.json(application, { status: 201 });
-      } catch (error: any) {
-        if (error.name === 'ZodError') {
-          return NextResponse.json(
-            { error: 'Datos inválidos', details: error.errors },
-            { status: 400 }
-          );
-        }
-
-        if (error.code === 'P2002') {
-          return NextResponse.json(
-            { error: 'El código de aplicación ya existe' },
-            { status: 409 }
-          );
-        }
-
-        console.error('Error al crear aplicación:', error);
-        return NextResponse.json(
-          { error: 'Error al crear aplicación' },
-          { status: 500 }
-        );
-      }
+export async function POST(request: Request) {
+  return withIdempotency(request, '/api/admin/applications', 'POST', async (body) => {
+    const validation = appSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error.issues[0].message },
+        { status: 400 }
+      );
     }
-  );
+
+    const { code, name } = validation.data;
+
+    const existing = await prisma.application.findUnique({ where: { code } });
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Ya existe una aplicación con este código' },
+        { status: 400 }
+      );
+    }
+
+    const application = await prisma.application.create({
+      data: { code, name },
+    });
+
+    return NextResponse.json(application, { status: 201 });
+  });
 }

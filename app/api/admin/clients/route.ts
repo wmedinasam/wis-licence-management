@@ -1,88 +1,61 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { withIdempotency } from '@/lib/idempotency/middleware';
 import { z } from 'zod';
-import { requireIdempotencyKey, withIdempotency } from '@/lib/idempotency/middleware';
-
-const prisma = new PrismaClient();
 
 const clientSchema = z.object({
-  name: z.string().min(3, 'Nombre debe tener al menos 3 caracteres'),
+  name: z.string().min(3, 'Nombre requerido'),
   nit: z.string().optional().nullable(),
-  email: z.string().email('Email inválido').optional().nullable(),
+  email: z.string().email().optional().nullable().or(z.literal('')),
 });
 
-// GET - Listar todos los clientes
 export async function GET() {
   try {
     const clients = await prisma.client.findMany({
       include: {
-        licenses: {
-          include: {
-            application: true,
-          },
+        _count: {
+          select: { licenses: true },
         },
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
     });
-
     return NextResponse.json(clients);
   } catch (error) {
-    console.error('Error al obtener clientes:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener clientes' },
-      { status: 500 }
-    );
+    console.error('Error al listar clientes:', error);
+    return NextResponse.json({ error: 'Error al listar clientes' }, { status: 500 });
   }
 }
 
-// POST - Crear nuevo cliente
-export async function POST(request: NextRequest) {
-  const idempotencyKey = requireIdempotencyKey(request);
-  
-  if (!idempotencyKey) {
-    return NextResponse.json(
-      { error: 'Header Idempotency-Key es requerido' },
-      { status: 400 }
-    );
-  }
+export async function POST(request: Request) {
+  return withIdempotency(request, '/api/admin/clients', 'POST', async (body) => {
+    const validation = clientSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error.issues[0].message },
+        { status: 400 }
+      );
+    }
 
-  return withIdempotency(
-    idempotencyKey,
-    '/api/admin/clients',
-    'POST',
-    async () => {
-      try {
-        const body = await request.json();
-        const validatedData = clientSchema.parse(body);
+    const { name, nit, email } = validation.data;
 
-        const client = await prisma.client.create({
-          data: validatedData,
-        });
-
-        return NextResponse.json(client, { status: 201 });
-      } catch (error: any) {
-        if (error.name === 'ZodError') {
-          return NextResponse.json(
-            { error: 'Datos inválidos', details: error.errors },
-            { status: 400 }
-          );
-        }
-
-        if (error.code === 'P2002') {
-          return NextResponse.json(
-            { error: 'El NIT ya existe' },
-            { status: 409 }
-          );
-        }
-
-        console.error('Error al crear cliente:', error);
+    if (nit) {
+      const existing = await prisma.client.findFirst({ where: { nit } });
+      if (existing) {
         return NextResponse.json(
-          { error: 'Error al crear cliente' },
-          { status: 500 }
+          { error: 'Ya existe un cliente con este NIT' },
+          { status: 400 }
         );
       }
     }
-  );
+
+    const client = await prisma.client.create({
+      data: {
+        name,
+        nit: nit || null,
+        email: email || null,
+      },
+    });
+
+    return NextResponse.json(client, { status: 201 });
+  });
 }

@@ -1,141 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { withIdempotency } from '@/lib/idempotency/middleware';
 import { z } from 'zod';
-import { requireIdempotencyKey, withIdempotency } from '@/lib/idempotency/middleware';
-
-const prisma = new PrismaClient();
 
 const licenseSchema = z.object({
-  clientId: z.string().uuid('ID de cliente inválido'),
-  applicationId: z.string().uuid('ID de aplicación inválido'),
-  expiresAt: z.string().datetime().refine((date) => new Date(date) > new Date(), {
-    message: 'La fecha de expiración debe ser en el futuro',
-  }),
-  isActive: z.boolean().default(true),
+  clientId: z.string().uuid('Cliente inválido'),
+  applicationId: z.string().uuid('Aplicación inválida'),
+  expiresAt: z.string().datetime('Fecha de expiración inválida'),
   hardwareId: z.string().optional().nullable(),
+  isActive: z.boolean().default(true),
 });
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clientId = searchParams.get('clientId');
     const applicationId = searchParams.get('applicationId');
-    const status = searchParams.get('status');
-
-    const where: any = {};
-
-    if (clientId) where.clientId = clientId;
-    if (applicationId) where.applicationId = applicationId;
-
-    if (status === 'active') {
-      where.isActive = true;
-      where.expiresAt = { gt: new Date() };
-    } else if (status === 'expired') {
-      where.expiresAt = { lt: new Date() };
-    } else if (status === 'expiring_soon') {
-      const thirtyDaysFromNow = new Date();
-      thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-      where.isActive = true;
-      where.expiresAt = { gt: new Date(), lt: thirtyDaysFromNow };
-    }
 
     const licenses = await prisma.license.findMany({
-      where,
+      where: {
+        ...(clientId ? { clientId } : {}),
+        ...(applicationId ? { applicationId } : {}),
+      },
       include: {
         client: true,
         application: true,
       },
-      orderBy: {
-        expiresAt: 'asc',
-      },
+      orderBy: { expiresAt: 'asc' },
     });
 
-    const licensesWithCalculations = licenses.map((license) => ({
-      ...license,
-      daysUntilExpiration: Math.ceil(
-        (license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-      ),
-      isExpired: license.expiresAt < new Date(),
-      isExpiringsoon: 
-        license.isActive && 
-        license.expiresAt > new Date() && 
-        Math.ceil((license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 30,
-    }));
-
-    return NextResponse.json(licensesWithCalculations);
+    return NextResponse.json(licenses);
   } catch (error) {
-    console.error('Error al obtener licencias:', error);
-    return NextResponse.json(
-      { error: 'Error al obtener licencias' },
-      { status: 500 }
-    );
+    console.error('Error al listar licencias:', error);
+    return NextResponse.json({ error: 'Error al listar licencias' }, { status: 500 });
   }
 }
 
-export async function POST(request: NextRequest) {
-  const idempotencyKey = requireIdempotencyKey(request);
-
-  if (!idempotencyKey) {
-    return NextResponse.json(
-      { error: 'Header Idempotency-Key es requerido' },
-      { status: 400 }
-    );
-  }
-
-  return withIdempotency(
-    idempotencyKey,
-    '/api/admin/licenses',
-    'POST',
-    async () => {
-      try {
-        const body = await request.json();
-        const validatedData = licenseSchema.parse(body);
-
-        const license = await prisma.$transaction(async (tx) => {
-          // Verificar que no exista licencia duplicada
-          const existing = await tx.license.findFirst({
-            where: {
-              clientId: validatedData.clientId,
-              applicationId: validatedData.applicationId,
-              hardwareId: validatedData.hardwareId,
-            },
-          });
-
-          if (existing) {
-            throw new Error('Esta licencia ya existe');
-          }
-
-          return await tx.license.create({
-            data: validatedData,
-            include: {
-              client: true,
-              application: true,
-            },
-          });
-        });
-
-        return NextResponse.json(license, { status: 201 });
-      } catch (error: any) {
-        if (error.name === 'ZodError') {
-          return NextResponse.json(
-            { error: 'Datos inválidos', details: error.errors },
-            { status: 400 }
-          );
-        }
-
-        if (error.message === 'Esta licencia ya existe') {
-          return NextResponse.json(
-            { error: 'Esta licencia ya existe' },
-            { status: 409 }
-          );
-        }
-
-        console.error('Error al crear licencia:', error);
-        return NextResponse.json(
-          { error: 'Error al crear licencia' },
-          { status: 500 }
-        );
-      }
+export async function POST(request: Request) {
+  return withIdempotency(request, '/api/admin/licenses', 'POST', async (body) => {
+    const validation = licenseSchema.safeParse(body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error.issues[0].message },
+        { status: 400 }
+      );
     }
-  );
+
+    const { clientId, applicationId, expiresAt, hardwareId, isActive } = validation.data;
+
+    // Verificar existencia
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client) return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
+
+    const app = await prisma.application.findUnique({ where: { id: applicationId } });
+    if (!app) return NextResponse.json({ error: 'Aplicación no encontrada' }, { status: 404 });
+
+    const license = await prisma.license.create({
+      data: {
+        clientId,
+        applicationId,
+        expiresAt: new Date(expiresAt),
+        hardwareId: hardwareId || null,
+        isActive,
+      },
+      include: { client: true, application: true },
+    });
+
+    return NextResponse.json(license, { status: 201 });
+  });
 }

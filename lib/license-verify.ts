@@ -1,76 +1,68 @@
-import { PrismaClient } from '@prisma/client';
-import { env } from './env';
+import { prisma } from './db';
 import { generateLicenseToken } from './jwt';
 import type { VerifyRequest, VerifyResponse } from '../types';
 
-const prisma = new PrismaClient();
-
 export async function verifyLicense(request: VerifyRequest): Promise<VerifyResponse> {
-  // Validar parámetros obligatorios
-  if (!request.clientNit || !request.appCode) {
-    return {
-      valid: false,
-      message: 'Faltan parámetros obligatorios: clientNit y appCode son requeridos',
-    };
-  }
+  const { clientNit, appCode, hardwareId } = request;
 
   try {
-    // Buscar cliente por NIT
-    const client = await prisma.client.findUnique({
-      where: { nit: request.clientNit },
+    // 1. Buscar cliente por NIT
+    const client = await prisma.client.findFirst({
+      where: { nit: clientNit },
     });
 
     if (!client) {
-      return {
-        valid: false,
-        message: 'Cliente no encontrado',
-      };
+      return { valid: false, message: 'Cliente no encontrado' };
     }
 
-    // Buscar aplicación por código
+    // 2. Buscar aplicación por código
     const application = await prisma.application.findUnique({
-      where: { code: request.appCode },
+      where: { code: appCode },
     });
 
     if (!application) {
-      return {
-        valid: false,
-        message: 'Aplicación no encontrada',
-      };
+      return { valid: false, message: 'Aplicación no encontrada' };
     }
 
-    // Buscar licencia activa
+    // 3. Buscar la licencia correspondiente
     const license = await prisma.license.findFirst({
       where: {
         clientId: client.id,
         applicationId: application.id,
-        isActive: true,
-        expiresAt: {
-          gt: new Date(), // La licencia no debe estar expirada
-        },
-        OR: [
-          { hardwareId: null }, // Sin lock de hardware
-          { hardwareId: request.hardwareId }, // Con lock de hardware que coincida
-        ],
       },
     });
 
     if (!license) {
-      return {
-        valid: false,
-        message: 'Licencia no encontrada o expirada',
-      };
+      return { valid: false, message: 'Licencia no encontrada para este cliente y aplicación' };
     }
 
-    // Generar token JWT para caché offline
-    const licenseToken = generateLicenseToken({
+    // 4. Validar si está activa manualmente
+    if (!license.isActive) {
+      return { valid: false, message: 'La licencia está inactiva (falta de pago o suspensión)' };
+    }
+
+    // 5. Validar expiración automática por fecha
+    const now = new Date();
+    if (new Date(license.expiresAt) < now) {
+      return { valid: false, message: 'La licencia ha expirado automáticamente por fecha' };
+    }
+
+    // 6. Validar hardwareId si la licencia está bloqueada a un equipo específico
+    if (license.hardwareId && license.hardwareId !== hardwareId) {
+      return { valid: false, message: 'La licencia no corresponde a este equipo (Hardware ID inválido)' };
+    }
+
+    // 7. Generar token JWT firmado para caché offline (7 días de gracia)
+    const tokenPayload = {
       clientId: client.id,
       clientNit: client.nit,
       applicationId: application.id,
       appCode: application.code,
       hardwareId: license.hardwareId,
       expiresAt: license.expiresAt.toISOString(),
-    });
+    };
+
+    const licenseToken = generateLicenseToken(tokenPayload);
 
     return {
       valid: true,
@@ -79,11 +71,6 @@ export async function verifyLicense(request: VerifyRequest): Promise<VerifyRespo
     };
   } catch (error) {
     console.error('Error al verificar licencia:', error);
-    return {
-      valid: false,
-      message: 'Error interno del servidor',
-    };
-  } finally {
-    await prisma.$disconnect();
+    return { valid: false, message: 'Error interno del servidor' };
   }
 }

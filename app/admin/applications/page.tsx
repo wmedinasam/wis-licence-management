@@ -2,101 +2,119 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Plus, Search, Edit } from 'lucide-react';
 import { NoDeleteBadge } from '@/components/admin/badges';
 
-interface Application {
-  id: string;
-  code: string;
-  name: string;
-  licenses: any[];
-}
-
 export default function ApplicationsPage() {
-  const [apps, setApps] = useState<Application[]>([]);
+  const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const fetchApps = async () => {
-      try {
-        const res = await fetch('/api/admin/applications');
-        const data = await res.json();
-        setApps(data);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchApps();
+    fetchApplications();
   }, []);
 
-  const filtered = apps.filter(
-    (a) =>
-      a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.code.toLowerCase().includes(search.toLowerCase())
+  const fetchApplications = async () => {
+    try {
+      const res = await fetch('/api/admin/applications');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setApplications(data);
+      } else {
+        setApplications([]);
+        toast.error(data.error || 'Error al cargar aplicaciones');
+      }
+    } catch (error) {
+      toast.error('Error al conectar con el servidor');
+      setApplications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredApps = applications.filter(
+    (app) =>
+      app.name.toLowerCase().includes(search.toLowerCase()) ||
+      app.code.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-white">Aplicaciones</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Aplicaciones</h1>
+          <p className="text-slate-400 mt-1">Gestiona el catálogo de software y productos licenciados</p>
+        </div>
         <Link href="/admin/applications/new">
-          <Button>
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" />
             Nueva Aplicación
           </Button>
         </Link>
       </div>
 
-      <Card>
+      <Card className="bg-slate-900 border-slate-800">
         <CardHeader>
-          <input
-            type="text"
-            placeholder="Buscar por código o nombre..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          />
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-white">Catálogo de Aplicaciones</CardTitle>
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Buscar por código o nombre..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-slate-400">Cargando...</div>
-          ) : filtered.length > 0 ? (
+            <div className="text-center py-8 text-slate-400">Cargando aplicaciones...</div>
+          ) : filteredApps.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">No se encontraron aplicaciones.</div>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-slate-700">
-                  <tr className="text-left text-slate-400">
-                    <th className="pb-3 font-medium">Código</th>
-                    <th className="pb-3 font-medium">Nombre</th>
-                    <th className="pb-3 font-medium">Licencias</th>
-                    <th className="pb-3 font-medium">Acciones</th>
+              <table className="w-full text-left text-sm text-slate-300">
+                <thead className="border-b border-slate-800 text-xs uppercase text-slate-400 bg-slate-950/50">
+                  <tr>
+                    <th className="px-4 py-3">Código</th>
+                    <th className="px-4 py-3">Nombre</th>
+                    <th className="px-4 py-3 text-center">Licencias Asociadas</th>
+                    <th className="px-4 py-3 text-center">Seguridad</th>
+                    <th className="px-4 py-3 text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {filtered.map((app) => (
-                    <tr key={app.id} className="border-b border-slate-800 hover:bg-slate-800/50">
-                      <td className="py-3 text-white font-mono">{app.code}</td>
-                      <td className="py-3 text-slate-300">{app.name}</td>
-                      <td className="py-3 text-slate-300">{app.licenses.length}</td>
-                      <td className="py-3 flex items-center gap-2">
+                <tbody className="divide-y divide-slate-800">
+                  {filteredApps.map((app) => (
+                    <tr key={app.id} className="hover:bg-slate-800/50 transition-colors">
+                      <td className="px-4 py-3 font-mono text-blue-400 font-semibold">{app.code}</td>
+                      <td className="px-4 py-3 font-medium text-white">{app.name}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800">
+                          {app._count?.licenses || 0}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <NoDeleteBadge />
+                      </td>
+                      <td className="px-4 py-3 text-right">
                         <Link href={`/admin/applications/${app.id}`}>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
+                          <Button variant="ghost" size="sm" className="text-blue-400 hover:text-blue-300 hover:bg-slate-800">
+                            <Edit className="h-4 w-4 mr-1" />
+                            Editar
                           </Button>
                         </Link>
-                        <NoDeleteBadge />
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="text-slate-400 py-8 text-center">No hay aplicaciones</div>
           )}
         </CardContent>
       </Card>
