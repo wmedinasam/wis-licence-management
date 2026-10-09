@@ -14,8 +14,12 @@ import { toast } from 'sonner';
 const formSchema = z.object({
   clientId: z.string().uuid('Cliente requerido'),
   applicationId: z.string().uuid('Aplicación requerida'),
-  dateOnly: z.string().min(1, 'Fecha requerida'),
+  isLifetime: z.boolean().default(false),
+  dateOnly: z.string().optional(),
   hardwareId: z.string().optional(),
+}).refine(data => data.isLifetime || (data.dateOnly && data.dateOnly.length > 0), {
+  message: 'Fecha requerida si no es lifetime',
+  path: ['dateOnly'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -27,9 +31,14 @@ export default function NewLicensePage() {
   const [apps, setApps] = useState<any[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      isLifetime: false,
+    }
   });
+
+  const isLifetime = watch('isLifetime');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,8 +63,10 @@ export default function NewLicensePage() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     try {
-      // Convertir fecha simple (YYYY-MM-DD) a ISO datetime al final del día (23:59:59)
-      const expiresAt = new Date(`${data.dateOnly}T23:59:59.000Z`).toISOString();
+      // Convertir fecha simple (YYYY-MM-DD) a ISO datetime al final del día (23:59:59) solo si no es lifetime
+      const expiresAt = data.isLifetime 
+        ? null 
+        : new Date(`${data.dateOnly}T23:59:59.000Z`).toISOString();
 
       const idempotencyKey = typeof window !== 'undefined' && window.crypto?.randomUUID
         ? window.crypto.randomUUID()
@@ -137,15 +148,28 @@ export default function NewLicensePage() {
             </div>
 
             <div>
-              <Label htmlFor="dateOnly" className="text-slate-300">Fecha de Expiración (Día/Mes/Año) *</Label>
-              <Input
-                id="dateOnly"
-                type="date"
-                {...register('dateOnly')}
-                className="bg-slate-800 border-slate-700 text-white mt-1"
-              />
-              {errors.dateOnly && <p className="text-red-400 text-sm mt-1">{errors.dateOnly.message}</p>}
+              <Label className="flex items-center gap-2 text-slate-300">
+                <input
+                  type="checkbox"
+                  {...register('isLifetime')}
+                  className="rounded border-slate-700 bg-slate-800 text-blue-600 focus:ring-blue-500"
+                />
+                Licencia Vitalicia (Lifetime)
+              </Label>
             </div>
+
+            {!isLifetime && (
+              <div>
+                <Label htmlFor="dateOnly" className="text-slate-300">Fecha de Expiración (Día/Mes/Año) *</Label>
+                <Input
+                  id="dateOnly"
+                  type="date"
+                  {...register('dateOnly')}
+                  className="bg-slate-800 border-slate-700 text-white mt-1"
+                />
+                {errors.dateOnly && <p className="text-red-400 text-sm mt-1">{errors.dateOnly.message}</p>}
+              </div>
+            )}
 
             <div>
               <Label htmlFor="hardwareId" className="text-slate-300">ID Hardware (Opcional)</Label>

@@ -41,9 +41,9 @@ export async function verifyLicense(request: VerifyRequest): Promise<VerifyRespo
       return { valid: false, message: 'La licencia está inactiva (falta de pago o suspensión)' };
     }
 
-    // 5. Validar expiración automática por fecha
+    // 5. Validar expiración automática por fecha (solo si no es lifetime)
     const now = new Date();
-    if (new Date(license.expiresAt) < now) {
+    if (license.expiresAt && new Date(license.expiresAt) < now) {
       return { valid: false, message: 'La licencia ha expirado automáticamente por fecha' };
     }
 
@@ -59,14 +59,14 @@ export async function verifyLicense(request: VerifyRequest): Promise<VerifyRespo
       applicationId: application.id,
       appCode: application.code,
       hardwareId: license.hardwareId,
-      expiresAt: license.expiresAt.toISOString(),
+      expiresAt: license.expiresAt ? license.expiresAt.toISOString() : null,
     };
 
     const licenseToken = generateLicenseToken(tokenPayload);
 
     return {
       valid: true,
-      expiresAt: license.expiresAt.toISOString(),
+      expiresAt: license.expiresAt ? license.expiresAt.toISOString() : undefined,
       licenseToken,
     };
   } catch (error) {
