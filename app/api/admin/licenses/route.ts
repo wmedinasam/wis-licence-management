@@ -6,7 +6,7 @@ import { z } from 'zod';
 const licenseSchema = z.object({
   clientId: z.string().uuid('Cliente inválido'),
   applicationId: z.string().uuid('Aplicación inválida'),
-  expiresAt: z.string().datetime('Fecha de expiración inválida'),
+  expiresAt: z.string().datetime().optional().nullable(),
   hardwareId: z.string().optional().nullable(),
   isActive: z.boolean().default(true),
 });
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
       data: {
         clientId,
         applicationId,
-        expiresAt: new Date(expiresAt),
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
         hardwareId: hardwareId || null,
         isActive,
       },

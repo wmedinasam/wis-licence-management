@@ -41,7 +41,7 @@ model License {
   client        Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
   applicationId String
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-  expiresAt     DateTime    // Fecha de expiración de la licencia
+  expiresAt     DateTime?   // Fecha de expiración (null = lifetime)
   isActive      Boolean     @default(true)
   hardwareId    String?     @db.VarChar(255) // Opcional: Bloquear licencia a un PC/Servidor específico
   createdAt     DateTime    @default(now())
