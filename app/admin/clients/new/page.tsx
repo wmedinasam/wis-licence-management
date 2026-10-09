@@ -58,6 +58,7 @@ export default function NewClientPage() {
         router.push('/admin/clients');
       } else {
         const error = await res.json();
+        console.error('Error del servidor:', error);
         toast.error(error.error || 'Error al crear cliente');
       }
     } catch (error) {
