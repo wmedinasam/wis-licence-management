@@ -38,12 +38,15 @@ export async function POST(request: Request) {
     }
 
     const { name, nit, email, country } = validation.data;
+    const normalizedNit = nit?.trim();
 
-    if (nit) {
-      const existing = await prisma.client.findFirst({ where: { nit } });
+    if (normalizedNit) {
+      const existing = await prisma.client.findFirst({ 
+        where: { nit: normalizedNit } 
+      });
       if (existing) {
         return NextResponse.json(
-          { error: 'Ya existe un cliente con este NIT' },
+          { error: `Ya existe un cliente registrado con el NIT: ${normalizedNit}` },
           { status: 400 }
         );
       }
@@ -52,7 +55,7 @@ export async function POST(request: Request) {
     const client = await prisma.client.create({
       data: {
         name,
-        nit: nit || null,
+        nit: normalizedNit || null,
         email: email || null,
         country: country || 'GT',
       },
