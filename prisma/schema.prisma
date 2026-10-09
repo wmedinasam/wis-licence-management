@@ -15,6 +15,7 @@ model Client {
   name      String    @db.VarChar(255)
   nit       String?   @unique @db.VarChar(50) // NIT (Identificación fiscal, ej. Guatemala)
   email     String?   @db.VarChar(255)
+  country   String    @default("GT") @db.VarChar(2)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   licenses  License[]

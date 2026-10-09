@@ -15,15 +15,27 @@ const clientSchema = z.object({
   name: z.string().min(3, 'Nombre debe tener al menos 3 caracteres'),
   nit: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
+  country: z.string().length(2, 'Seleccione un país'),
 });
 
 type ClientFormData = z.infer<typeof clientSchema>;
+
+const COUNTRIES = [
+  { code: 'GT', name: 'Guatemala' },
+  { code: 'SV', name: 'El Salvador' },
+  { code: 'HN', name: 'Honduras' },
+  { code: 'NI', name: 'Nicaragua' },
+  { code: 'CR', name: 'Costa Rica' },
+  { code: 'PA', name: 'Panamá' },
+  { code: 'BZ', name: 'Belice' },
+];
 
 export default function NewClientPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const { register, handleSubmit, formState: { errors } } = useForm<ClientFormData>({
     resolver: zodResolver(clientSchema),
+    defaultValues: { country: 'GT' }
   });
 
   const onSubmit = async (data: ClientFormData) => {
@@ -99,6 +111,24 @@ export default function NewClientPage() {
               />
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="country">País *</Label>
+              <select
+                id="country"
+                {...register('country')}
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-black focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {errors.country && (
+                <p className="text-red-500 text-sm mt-1">{errors.country.message}</p>
               )}
             </div>
 

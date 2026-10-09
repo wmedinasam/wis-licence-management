@@ -7,6 +7,7 @@ const clientSchema = z.object({
   name: z.string().min(3, 'Nombre requerido'),
   nit: z.string().optional().nullable(),
   email: z.string().email().optional().nullable().or(z.literal('')),
+  country: z.string().length(2, 'País debe ser código ISO de 2 dígitos').default('GT'),
 });
 
 export async function GET() {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, nit, email } = validation.data;
+    const { name, nit, email, country } = validation.data;
 
     if (nit) {
       const existing = await prisma.client.findFirst({ where: { nit } });
@@ -53,6 +54,7 @@ export async function POST(request: Request) {
         name,
         nit: nit || null,
         email: email || null,
+        country: country || 'GT',
       },
     });
 

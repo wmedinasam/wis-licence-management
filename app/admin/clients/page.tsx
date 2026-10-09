@@ -85,6 +85,7 @@ export default function ClientsPage() {
                     <th className="px-4 py-3">Nombre</th>
                     <th className="px-4 py-3">NIT</th>
                     <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">País</th>
                     <th className="px-4 py-3 text-center">Licencias</th>
                     <th className="px-4 py-3 text-center">Seguridad</th>
                     <th className="px-4 py-3 text-right">Acciones</th>
@@ -96,6 +97,11 @@ export default function ClientsPage() {
                       <td className="px-4 py-3 font-medium text-white">{client.name}</td>
                       <td className="px-4 py-3">{client.nit || <span className="text-slate-500 italic">Sin NIT</span>}</td>
                       <td className="px-4 py-3">{client.email || <span className="text-slate-500 italic">Sin email</span>}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono text-xs bg-slate-800 px-2 py-1 rounded border border-slate-700">
+                          {client.country}
+                        </span>
+                      </td>
                       <td className="px-4 py-3 text-center">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-950 text-blue-300 border border-blue-800">
                           {client._count?.licenses || 0}
