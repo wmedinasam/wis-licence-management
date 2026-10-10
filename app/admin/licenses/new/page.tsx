@@ -17,9 +17,6 @@ const formSchema = z.object({
   isLifetime: z.boolean().default(false),
   dateOnly: z.string().optional(),
   hardwareId: z.string().optional(),
-}).refine(data => data.isLifetime || (data.dateOnly && data.dateOnly.length > 0), {
-  message: 'Fecha requerida si no es lifetime',
-  path: ['dateOnly'],
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -31,7 +28,7 @@ export default function NewLicensePage() {
   const [apps, setApps] = useState<any[]>([]);
   const [clientsLoading, setClientsLoading] = useState(true);
 
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<any>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       isLifetime: false,
@@ -127,7 +124,7 @@ export default function NewLicensePage() {
                   </option>
                 ))}
               </select>
-              {errors.clientId && <p className="text-red-400 text-sm mt-1">{errors.clientId.message}</p>}
+              {errors.clientId && <p className="text-red-400 text-sm mt-1">{errors.clientId.message as string}</p>}
             </div>
 
             <div>
@@ -144,7 +141,7 @@ export default function NewLicensePage() {
                   </option>
                 ))}
               </select>
-              {errors.applicationId && <p className="text-red-400 text-sm mt-1">{errors.applicationId.message}</p>}
+              {errors.applicationId && <p className="text-red-400 text-sm mt-1">{errors.applicationId.message as string}</p>}
             </div>
 
             <div>
@@ -167,7 +164,7 @@ export default function NewLicensePage() {
                   {...register('dateOnly')}
                   className="bg-slate-800 border-slate-700 text-white mt-1"
                 />
-                {errors.dateOnly && <p className="text-red-400 text-sm mt-1">{errors.dateOnly.message}</p>}
+                {errors.dateOnly && <p className="text-red-400 text-sm mt-1">{errors.dateOnly.message as string}</p>}
               </div>
             )}
 

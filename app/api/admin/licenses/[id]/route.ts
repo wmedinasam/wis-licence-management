@@ -33,17 +33,19 @@ export async function GET(
       );
     }
 
-    const daysUntilExpiration = Math.ceil(
-      (license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysUntilExpiration = license.expiresAt 
+      ? Math.ceil((license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      : null;
 
     return NextResponse.json({
       ...license,
       daysUntilExpiration,
-      isExpired: license.expiresAt < new Date(),
+      isExpired: license.expiresAt ? license.expiresAt < new Date() : false,
       isExpiringSoon: 
         license.isActive && 
+        license.expiresAt &&
         license.expiresAt > new Date() && 
+        daysUntilExpiration !== null && 
         daysUntilExpiration <= 30,
     });
   } catch (error) {
@@ -73,17 +75,19 @@ export async function PATCH(
       },
     });
 
-    const daysUntilExpiration = Math.ceil(
-      (license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const daysUntilExpiration = license.expiresAt 
+      ? Math.ceil((license.expiresAt.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+      : null;
 
     return NextResponse.json({
       ...license,
       daysUntilExpiration,
-      isExpired: license.expiresAt < new Date(),
+      isExpired: license.expiresAt ? license.expiresAt < new Date() : false,
       isExpiringSoon: 
         license.isActive && 
+        license.expiresAt &&
         license.expiresAt > new Date() && 
+        daysUntilExpiration !== null && 
         daysUntilExpiration <= 30,
     });
   } catch (error: any) {

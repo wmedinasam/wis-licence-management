@@ -4,7 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LogOut, Menu, X, Home, Users, Package, Lock } from 'lucide-react';
+import { LogOut, Menu, X, Home, Users, Package, Lock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Clientes', href: '/admin/clients', icon: Users },
   { name: 'Aplicaciones', href: '/admin/applications', icon: Package },
   { name: 'Licencias', href: '/admin/licenses', icon: Lock },
+  { name: 'Documentación API', href: '/docs', icon: FileText },
 ];
 
 function AdminLayoutContent({
