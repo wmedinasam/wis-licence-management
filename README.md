@@ -102,6 +102,12 @@ model License {
 
 ---
 
+## 📖 Documentación interactiva
+
+La referencia interactiva de la API está disponible en `/docs` y no requiere iniciar sesión. La especificación OpenAPI se sirve desde `/openapi.json`. Consultar la documentación es público; para ejecutar `POST /api/licenses/verify` sigue siendo obligatorio enviar la API Key del servidor en el header `x-api-key`.
+
+---
+
 ## ⚙️ Configuración y Variables de Entorno
 
 Crea un archivo `.env` en la raíz de tu proyecto con las siguientes variables:

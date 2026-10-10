@@ -1,0 +1,173 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "WIS Licensing API",
+    "version": "1.0.0",
+    "description": "API pública para verificar licencias de software."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/licenses/verify": {
+      "post": {
+        "summary": "Verificar licencia",
+        "description": "Comprueba que el cliente tenga una licencia activa para la aplicación solicitada. Si es válida, genera un token JWT para uso offline con vigencia de 7 días.",
+        "operationId": "verifyLicense",
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyLicenseRequest"
+              },
+              "example": {
+                "clientNit": "1234567-8",
+                "appCode": "SAE_FACTURACION_GT",
+                "hardwareId": "opcional-id-maquina"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Licencia válida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyLicenseSuccess"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "La API Key falta o no es válida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyLicenseError"
+                },
+                "example": {
+                  "valid": false,
+                  "message": "API Key inválida o faltante"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No se encontró una licencia válida para el cliente y la aplicación.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyLicenseError"
+                },
+                "example": {
+                  "valid": false,
+                  "message": "Cliente no encontrado"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "No se pudo procesar la solicitud.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyLicenseError"
+                },
+                "example": {
+                  "valid": false,
+                  "message": "Error al procesar la solicitud"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API Key configurada en el servidor. No publiques esta clave en clientes o repositorios."
+      }
+    },
+    "schemas": {
+      "VerifyLicenseRequest": {
+        "type": "object",
+        "required": [
+          "clientNit",
+          "appCode"
+        ],
+        "properties": {
+          "clientNit": {
+            "type": "string",
+            "description": "NIT del cliente.",
+            "example": "1234567-8"
+          },
+          "appCode": {
+            "type": "string",
+            "description": "Código único de la aplicación.",
+            "example": "SAE_FACTURACION_GT"
+          },
+          "hardwareId": {
+            "type": "string",
+            "description": "Identificador opcional del equipo."
+          }
+        }
+      },
+      "VerifyLicenseSuccess": {
+        "type": "object",
+        "required": [
+          "valid",
+          "licenseToken"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Fecha de expiración de la licencia."
+          },
+          "licenseToken": {
+            "type": "string",
+            "description": "JWT firmado para caché y validación offline."
+          }
+        }
+      },
+      "VerifyLicenseError": {
+        "type": "object",
+        "required": [
+          "valid",
+          "message"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
