@@ -104,7 +104,7 @@ model License {
 
 ## 📖 Documentación interactiva
 
-La referencia interactiva de la API está disponible en `/docs` y no requiere iniciar sesión. La especificación OpenAPI se sirve desde `/openapi.json`. Consultar la documentación es público; para ejecutar `POST /api/licenses/verify` sigue siendo obligatorio enviar la API Key del servidor en el header `x-api-key`.
+La referencia interactiva de la API está disponible en `/docs` y no requiere iniciar sesión. La especificación OpenAPI se sirve desde `/openapi.json`. La página incluye un botón que solicita `POST /api/licenses/demo-token` para generar un valor ficticio de demostración, sin API Key ni acceso a licencias reales. Este valor no es un JWT válido y no funciona para producción. Para ejecutar `POST /api/licenses/verify` contra licencias reales sigue siendo obligatorio enviar la API Key del servidor en el header `x-api-key`.
 
 ---
 

@@ -11,6 +11,33 @@
     }
   ],
   "paths": {
+    "/api/licenses/demo-token": {
+      "post": {
+        "summary": "Generar token de demostración",
+        "description": "Genera un valor ficticio para explorar la documentación sin API Key. No consulta licencias ni genera un JWT válido; no sirve para la API real ni para producción.",
+        "operationId": "generateDemoLicenseToken",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Respuesta simulada exitosa. El valor generado no representa una licencia válida.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoTokenResponse"
+                },
+                "example": {
+                  "valid": true,
+                  "demo": true,
+                  "expiresAt": "2026-10-17T00:00:00.000Z",
+                  "licenseToken": "DEMO_ONLY.123e4567-e89b-12d3-a456-426614174000",
+                  "message": "Token ficticio para probar la documentación; no es un JWT ni sirve para validar licencias reales."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/licenses/verify": {
       "post": {
         "summary": "Verificar licencia",
@@ -103,6 +130,42 @@
       }
     },
     "schemas": {
+      "DemoTokenResponse": {
+        "type": "object",
+        "required": [
+          "valid",
+          "demo",
+          "expiresAt",
+          "licenseToken",
+          "message"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "enum": [
+              true
+            ],
+            "description": "Indica una respuesta simulada exitosa; no confirma una licencia real."
+          },
+          "demo": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "licenseToken": {
+            "type": "string",
+            "description": "Valor ficticio; no es un JWT válido."
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
       "VerifyLicenseRequest": {
         "type": "object",
         "required": [
