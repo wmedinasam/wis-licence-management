@@ -110,17 +110,31 @@ La referencia interactiva de la API está disponible en `/docs` y no requiere in
 
 ## ⚙️ Configuración y Variables de Entorno
 
-Crea un archivo `.env` en la raíz de tu proyecto con las siguientes variables:
+Para desarrollo local, conserva PostgreSQL local y configura `.env` (para Prisma CLI) y/o `.env.local` (para Next.js), ambos ignorados por Git:
 
 ```env
 DATABASE_URL="postgresql://usuario:password@host:puerto/database?schema=public"
+DIRECT_URL="postgresql://USER:PASSWORD@localhost:5432/wis_licences?schema=public"
 JWT_SECRET="tu_secreto_super_seguro_para_firmar_tokens"
 BACKEND_API_KEY="clave_secreta_que_conocera_tu_app_de_escritorio"
 ```
+
+Configura `DIRECT_URL` con la misma conexión local que `DATABASE_URL`; puedes usar como referencia `.env.example`. No guardes contraseñas reales ni URLs privadas en archivos versionados.
 
 ---
 
 ## 🚀 Despliegue Gratuito y Escalable
 
-1. **Base de Datos:** Aloja tu base de datos PostgreSQL de forma gratuita en [Supabase](https://supabase.com/) o [Neon](https://neon.tech/).
-2. **Backend/API:** Despliega este proyecto de Next.js en [Vercel](https://vercel.com/) utilizando su capa gratuita (*Hobby Tier*), ideal para APIs de licenciamiento con tráfico de baja/mediana concurrencia.
+1. **Base de datos:** En Supabase, usa la URL del pooler transaccional (puerto `6543`) para las conexiones de la aplicación y la URL del pooler de sesión (puerto `5432`) para las migraciones:
+
+   ```env
+   DATABASE_URL="postgresql://postgres.<PROJECT_REF>:<PASSWORD>@<POOLER_HOST>:6543/postgres?pgbouncer=true"
+   DIRECT_URL="postgresql://postgres.<PROJECT_REF>:<PASSWORD>@<POOLER_HOST>:5432/postgres"
+   ```
+
+   Sustituye los marcadores por los datos de conexión de Supabase y codifica los caracteres especiales de la contraseña para URL. Prisma usa `DATABASE_URL` en ejecución y `DIRECT_URL` para operaciones de migración. Para desarrollo local, conserva ambas variables apuntando a PostgreSQL local; no reemplaces esas conexiones por las de producción.
+2. **Crear el schema en Supabase:** La base debe estar vacía. Desde un entorno seguro que tenga configuradas las dos variables de Supabase, ejecuta `npx prisma migrate deploy`. Esto aplica las migraciones versionadas existentes; no uses `prisma init` ni `prisma migrate dev` contra producción. No se copian automáticamente los datos de PostgreSQL local.
+3. **Vercel:** En la configuración del proyecto, agrega `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET` y `BACKEND_API_KEY` como variables de entorno de producción (y de otros entornos solo si corresponde). Despliega la app con el flujo nativo de Next.js en Vercel.
+4. **Verificación:** Tras aplicar las migraciones, ejecuta `npx prisma migrate status` con las conexiones de Supabase y confirma que las migraciones están aplicadas antes de dirigir la aplicación de producción a esa base de datos.
+
+Configura las credenciales privadas únicamente en archivos locales ignorados por Git o en las variables de entorno de Vercel.
