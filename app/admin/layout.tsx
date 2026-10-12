@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/ui/logo';
 import { LogOut, Menu, X, Home, Users, Package, Lock, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +13,7 @@ const navigation = [
   { name: 'Clientes', href: '/admin/clients', icon: Users },
   { name: 'Aplicaciones', href: '/admin/applications', icon: Package },
   { name: 'Licencias', href: '/admin/licenses', icon: Lock },
-  { name: 'Documentación API', href: '/docs', icon: FileText },
+  { name: 'Documentación API', href: '/admin/docs', icon: FileText },
 ];
 
 function AdminLayoutContent({
@@ -40,11 +41,12 @@ function AdminLayoutContent({
               className="md:hidden"
             >
               {sidebarOpen ? (
-                <X className="h-6 w-6" />
+                <X className="h-6 w-6 text-white" />
               ) : (
-                <Menu className="h-6 w-6" />
+                <Menu className="h-6 w-6 text-white" />
               )}
             </button>
+            <Logo className="h-8 w-8" />
             <h1 className="text-xl font-bold text-white">WIS Admin</h1>
           </div>
           <Button variant="ghost" onClick={handleLogout} size="sm">

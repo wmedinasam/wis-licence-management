@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Logo } from '@/components/ui/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LoginPage() {
@@ -45,6 +46,9 @@ export default function LoginPage() {
           <CardTitle className="text-2xl text-center">Panel de Administración</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="flex justify-center mb-6">
+            <Logo className="w-24 h-24" />
+          </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="password">Contraseña</Label>

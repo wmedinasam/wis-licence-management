@@ -26,7 +26,7 @@ export default function DocsPage() {
     setDemoError(null);
 
     try {
-      const response = await fetch('/api/licenses/demo-token', { method: 'POST' });
+      const response = await fetch('/api/admin/licenses/demo-token', { method: 'POST' });
       const result = await response.json();
 
       if (!response.ok) {
@@ -53,7 +53,7 @@ export default function DocsPage() {
       if (!isMounted || !window.Scalar) return;
 
       scalarInstance = window.Scalar.createApiReference(container, {
-        url: '/openapi.json',
+        url: '/api/admin/openapi',
         theme: 'deepSpace',
       });
     };
@@ -87,20 +87,20 @@ export default function DocsPage() {
 
   if (loadError) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6 text-center text-slate-700">
+      <div className="flex min-h-[50vh] items-center justify-center p-6 text-center text-slate-400">
         No se pudo cargar Scalar. Verifica tu conexión e intenta recargar la página.
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-slate-950">
-      <section className="border-b border-slate-800 bg-slate-900 px-6 py-5 text-slate-100">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="-m-6 md:-m-8">
+      <section className="border-b border-slate-800 bg-slate-900/50 px-6 py-5 text-slate-100">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-lg font-semibold">Token de demostración</h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-300">
-              Genera un valor ficticio para explorar la documentación sin iniciar sesión. No es un JWT
+            <p className="mt-1 max-w-2xl text-sm text-slate-400">
+              Genera un valor ficticio para explorar la documentación. No es un JWT
               válido y no funciona con la API real ni con licencias de producción.
             </p>
           </div>
@@ -114,19 +114,19 @@ export default function DocsPage() {
           </button>
         </div>
         {demoToken && (
-          <div className="mx-auto mt-4 max-w-5xl rounded-md border border-slate-700 bg-slate-950 p-4">
+          <div className="mt-4 rounded-md border border-slate-700 bg-slate-950 p-4">
             <p className="text-xs text-slate-400">Token de demostración (no válido para producción)</p>
             <code className="mt-2 block break-all text-sm text-emerald-300">{demoToken.licenseToken}</code>
             <p className="mt-2 text-xs text-slate-400">{demoToken.message}</p>
           </div>
         )}
         {demoError && (
-          <p role="alert" className="mx-auto mt-3 max-w-5xl text-sm text-red-300">
+          <p role="alert" className="mt-3 text-sm text-red-300">
             {demoError}
           </p>
         )}
       </section>
       <div ref={containerRef} className="min-h-screen w-full" />
-    </main>
+    </div>
   );
 }

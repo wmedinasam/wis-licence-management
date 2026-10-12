@@ -11,11 +11,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Si intenta acceder a rutas admin sin autenticación
-  if (pathname.startsWith('/admin')) {
+  // Si intenta acceder a rutas admin o api/admin sin autenticación
+  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     const cookie = request.cookies.get('admin_session');
     
     if (!cookie || cookie.value !== 'authenticated') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
+      }
       const loginUrl = new URL('/login', request.url);
       return NextResponse.redirect(loginUrl);
     }
